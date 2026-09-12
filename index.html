@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>合租生活管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            clay: { 50:'#FBF3ED',100:'#F7E8DB',200:'#EFD0B8',300:'#E4B389',400:'#D4945E',500:'#C4663A',600:'#A85330',700:'#7A3B23',DEFAULT:'#C4663A'},
+            sage: { 50:'#F2F5EF',100:'#DCE5D4',200:'#BAC9AC',300:'#9AAE88',400:'#7A8B6F',500:'#5E6F54',DEFAULT:'#7A8B6F'},
+            cream: '#F7F1E8',
+            charcoal: '#2D2A26',
+          },
+          fontFamily: {
+            serif: ['"DM Serif Display"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F7F1E8; color: #2D2A26; }
+    h1,h2,h3,.font-serif { font-family: 'DM Serif Display', serif; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E4B389; border-radius: 4px; }
+    .page-enter { animation: fadeInUp .4s ease-out; }
+    @keyframes fadeInUp { from { opacity:0; transform: translateY(12px);} to { opacity:1; transform: translateY(0);} }
+    .stagger > * { animation: fadeInUp .4s ease-out backwards; }
+    .stagger > *:nth-child(1){animation-delay:.05s}
+    .stagger > *:nth-child(2){animation-delay:.1s}
+    .stagger > *:nth-child(3){animation-delay:.15s}
+    .stagger > *:nth-child(4){animation-delay:.2s}
+    .stagger > *:nth-child(5){animation-delay:.25s}
+    .stagger > *:nth-child(6){animation-delay:.3s}
+    @media (min-width: 768px) { .mobile-nav { display: none !important; } }
+    @media (max-width: 767px) { .desktop-nav { display: none !important; } .main-pad { padding-left: 1rem !important; padding-right: 1rem !important; } }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<div id="app" class="min-h-screen"></div>
+
+<script>
+/* ========== 数据层 ========== */
+const STORE_KEY = 'home_help_data_v1';
+
+const defaultRoommates = [
+  { id:'r1', name:'小林', avatar:'🦊', room:'主卧A', color:'#C4663A' },
+  { id:'r2', name:'阿杰', avatar:'🐻', room:'次卧B', color:'#7A8B6F' },
+  { id:'r3', name:'柚柚', avatar:'🐰', room:'次卧C', color:'#D4945E' },
+  { id:'r4', name:'大伟', avatar:'🐼', room:'客厅隔断', color:'#9AAE88' },
+];
+
+const today = new Date();
+const dateStr = (d) => d.toISOString().slice(0,10);
+const addDays = (d, n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+
+const defaultExpenses = [
+  { id:'e1', amount:2400, category:'房租', payerId:'r1', date:dateStr(today), note:'11月房租', splitAmong:['r1','r2','r3','r4'] },
+  { id:'e2', amount:186, category:'水电', payerId:'r2', date:dateStr(addDays(today,-2)), note:'水费+电费', splitAmong:['r1','r2','r3','r4'] },
+  { id:'e3', amount:89, category:'日用', payerId:'r3', date:dateStr(addDays(today,-5)), note:'清洁用品团购', splitAmong:['r1','r2','r3'] },
+  { id:'e4', amount:320, category:'网费', payerId:'r1', date:dateStr(addDays(today,-15)), note:'宽带年费分摊', splitAmong:['r1','r2','r3','r4'] },
+  { id:'e5', amount:45.5, category:'餐饮', payerId:'r4', date:dateStr(addDays(today,-1)), note:'周末火锅', splitAmong:['r1','r2','r3','r4'] },
+];
+
+const defaultTasks = [
+  { id:'t1', area:'厨房', date:dateStr(today), assigneeId:'r1', done:false, doneAt:'' },
+  { id:'t2', area:'卫生间', date:dateStr(today), assigneeId:'r2', done:false, doneAt:'' },
+  { id:'t3', area:'客厅', date:dateStr(addDays(today,-1)), assigneeId:'r3', done:true, doneAt:dateStr(addDays(today,-1)) },
+  { id:'t4', area:'倒垃圾', date:dateStr(addDays(today,1)), assigneeId:'r4', done:false, doneAt:'' },
+  { id:'t5', area:'厨房', date:dateStr(addDays(today,2)), assigneeId:'r2', done:false, doneAt:'' },
+  { id:'t6', area:'卫生间', date:dateStr(addDays(today,3)), assigneeId:'r1', done:false, doneAt:'' },
+  { id:'t7', area:'客厅', date:dateStr(addDays(today,4)), assigneeId:'r4', done:false, doneAt:'' },
+  { id:'t8', area:'倒垃圾', date:dateStr(addDays(today,5)), assigneeId:'r3', done:false, doneAt:'' },
+];
+
+const defaultItems = [
+  { id:'i1', name:'抽纸', quantity:3, unit:'包', threshold:2, emoji:'🧻' },
+  { id:'i2', name:'洗洁精', quantity:1, unit:'瓶', threshold:1, emoji:'🧴' },
+  { id:'i3', name:'垃圾袋', quantity:8, unit:'个', threshold:5, emoji:'🗑️' },
+  { id:'i4', name:'洗手液', quantity:2, unit:'瓶', threshold:1, emoji:'🧼' },
+  { id:'i5', name:'洁厕灵', quantity:0, unit:'瓶', threshold:1, emoji:'🚽' },
+];
+
+const defaultUsages = [
+  { id:'u1', itemId:'i1', amount:1, userId:'r2', date:dateStr(addDays(today,-3)) },
+  { id:'u2', itemId:'i3', amount:2, userId:'r1', date:dateStr(addDays(today,-1)) },
+  { id:'u3', itemId:'i5', amount:1, userId:'r4', date:dateStr(addDays(today,-2)) },
+];
+
+const defaultRules = [
+  { id:'ru1', title:'22:30后降低音量', content:'晚上10点半后，大家休息时段，请自觉调低手机、电视音量，戴耳机更佳。', likes:4, dislikes:0 },
+  { id:'ru2', title:'公共区域当日清洁', content:'当天值日的室友需在当晚12点前完成清洁任务并打卡，特殊情况可提前协调换班。', likes:4, dislikes:1 },
+  { id:'ru3', title:'冰箱食物贴标签', content:'冰箱内个人食物请贴上姓名标签和日期，未贴标的视为公共可取用。存放超3天视为丢弃。', likes:3, dislikes:0 },
+  { id:'ru4', title:'公共物品低于阈值即补', content:'公共物品库存低于补货阈值时，值日室友负责采购，费用记入AA分摊。', likes:4, dislikes:0 },
+  { id:'ru5', title:'访客留宿提前告知', content:'如有朋友来访并留宿，需在室友群提前告知，留宿不超过2晚。', likes:3, dislikes:1 },
+];
+
+const defaultData = {
+  roommates: defaultRoommates,
+  expenses: defaultExpenses,
+  tasks: defaultTasks,
+  items: defaultItems,
+  usages: defaultUsages,
+  rules: defaultRules,
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  saveData(defaultData);
+  return JSON.parse(JSON.stringify(defaultData));
+}
+function saveData(d) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch(e) {}
+}
+
+let state = loadData();
+
+function uid() { return 'x' + Math.random().toString(36).slice(2,9); }
+function rm(id) { return state.roommates.find(r=>r.id===id) || {name:'?',avatar:'?',color:'#999'}; }
+function fmtMoney(n) { return '¥' + Number(n).toFixed(n%1?2:0); }
+function fmtDate(d) {
+  const dt = new Date(d);
+  return `${dt.getMonth()+1}月${dt.getDate()}日`;
+}
+function isToday(d) { return dateStr(new Date()) === d; }
+
+/* ========== 路由 ========== */
+let currentRoute = '/';
+function navigate(r) { currentRoute = r; render(); window.scrollTo(0,0); }
+
+/* ========== 渲染主函数 ========== */
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = layoutHTML();
+  bindGlobalEvents();
+}
+
+/* ========== 布局 ========== */
+const navItems = [
+  { path:'/', label:'首页', icon:'🏠' },
+  { path:'/expenses', label:'费用', icon:'💰' },
+  { path:'/cleaning', label:'值日', icon:'🧹' },
+  { path:'/items', label:'物品', icon:'📦' },
+  { path:'/rules', label:'公约', icon:'📜' },
+];
+
+function layoutHTML() {
+  return `
+    <div class="flex min-h-screen">
+      <!-- 桌面侧边导航 -->
+      <nav class="desktop-nav fixed left-0 top-0 h-screen w-60 bg-white/70 backdrop-blur border-r border-clay-200 flex flex-col z-30">
+        <div class="px-6 py-7">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🏠</span>
+            <span class="font-serif text-xl text-charcoal">合租管家</span>
+          </div>
+          <p class="text-xs text-sage-500 mt-1 ml-9">让生活更和谐</p>
+        </div>
+        <div class="flex-1 px-3 space-y-1">
+          ${navItems.map(n=>navBtn(n)).join('')}
+        </div>
+        <div class="px-4 py-4 border-t border-clay-100">
+          <div class="flex items-center gap-2 px-2 py-2 rounded-xl bg-cream">
+            ${state.roommates.slice(0,4).map(r=>`<span class="text-lg" title="${r.name}">${r.avatar}</span>`).join('')}
+          </div>
+          <p class="text-xs text-sage-500 mt-2 px-2">${state.roommates.length}位室友在线</p>
+        </div>
+      </nav>
+
+      <!-- 主内容 -->
+      <main class="flex-1 md:ml-60 main-pad pb-24 md:pb-8">
+        <div class="max-w-5xl mx-auto px-6 py-8 page-enter">
+          ${pageHTML()}
+        </div>
+      </main>
+    </div>
+    <!-- 移动端底部导航 -->
+    <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-clay-200 flex z-30">
+      ${navItems.map(n=>`
+        <button onclick="navigate('${n.path}')" class="flex-1 flex flex-col items-center py-2 ${currentRoute===n.path?'text-clay-600':'text-sage-400'}">
+          <span class="text-xl">${n.icon}</span>
+          <span class="text-[10px] font-semibold mt-0.5">${n.label}</span>
+        </button>
+      `).join('')}
+    </nav>
+  `;
+}
+
+function navBtn(n) {
+  const active = currentRoute === n.path;
+  return `
+    <button onclick="navigate('${n.path}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${active?'bg-clay-500 text-white shadow-lg shadow-clay-200':'text-charcoal hover:bg-clay-50'}">
+      <span class="text-lg">${n.icon}</span>
+      <span>${n.label}</span>
+    </button>
+  `;
+}
+
+function pageHTML() {
+  switch(currentRoute) {
+    case '/': return dashboardHTML();
+    case '/expenses': return expensesHTML();
+    case '/cleaning': return cleaningHTML();
+    case '/items': return itemsHTML();
+    case '/rules': return rulesHTML();
+    default: return dashboardHTML();
+  }
+}
+
+/* ========== 页面标题组件 ========== */
+function pageHeader(title, subtitle, emoji) {
+  return `
+    <div class="mb-8">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">${emoji}</span>
+        <div>
+          <h1 class="text-3xl text-charcoal leading-none">${title}</h1>
+          <p class="text-sm text-sage-500 mt-1">${subtitle}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ========== 首页 Dashboard ========== */
+function dashboardHTML() {
+  const thisMonth = new Date().getMonth();
+  const monthExpenses = state.expenses.filter(e => new Date(e.date).getMonth() === thisMonth);
+  const monthTotal = monthExpenses.reduce((s,e)=>s+e.amount,0);
+  const myShare = state.expenses.reduce((s,e)=>{
+    if(e.splitAmong.includes('r1')) return s + e.amount / e.splitAmong.length;
+    return s;
+  },0);
+  const todayTasks = state.tasks.filter(t=>isToday(t.date) && !t.done);
+  const lowItems = state.items.filter(i=>i.quantity <= i.threshold);
+
+  // 动态时间轴
+  const activities = [];
+  state.expenses.slice().reverse().slice(0,3).forEach(e=>{
+    activities.push({time:e.date, icon:'💰', text:`${rm(e.payerId).name} 记了一笔 ${e.category} ${fmtMoney(e.amount)}`});
+  });
+  state.tasks.filter(t=>t.done).slice(-2).forEach(t=>{
+    activities.push({time:t.doneAt, icon:'✅', text:`${rm(t.assigneeId).name} 完成了「${t.area}」清洁`});
+  });
+  state.usages.slice().reverse().slice(0,2).forEach(u=>{
+    activities.push({time:u.date, icon:'📦', text:`${rm(u.userId).name} 消耗了 ${state.items.find(i=>i.id===u.itemId)?.name||''} ${u.amount}${state.items.find(i=>i.id===u.itemId)?.unit||''}`});
+  });
+  activities.sort((a,b)=>new Date(b.time)-new Date(a.time));
+
+  return `
+    ${pageHeader('今日合租', '欢迎回家，看看今天有什么需要关注', '🏠')}
+
+    <!-- 概览卡组 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-clay-100 hover:shadow-md transition-shadow">
+        <p class="text-xs text-sage-500 font-semibold">本月总支出</p>
+        <p class="text-2xl font-serif text-clay-600 mt-1">${fmtMoney(monthTotal)}</p>
+        <p class="text-xs text-sage-400 mt-1">${monthExpenses.length} 笔记录</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-clay-100 hover:shadow-md transition-shadow">
+        <p class="text-xs text-sage-500 font-semibold">我的分摊</p>
+        <p class="text-2xl font-serif text-sage-500 mt-1">${fmtMoney(myShare)}</p>
+        <p class="text-xs text-sage-400 mt-1">累计待结算</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-clay-100 hover:shadow-md transition-shadow">
+        <p class="text-xs text-sage-500 font-semibold">今日值日</p>
+        <p class="text-2xl font-serif text-charcoal mt-1">${todayTasks.length > 0 ? todayTasks.length+'项' : '已完成'}</p>
+        <p class="text-xs text-sage-400 mt-1">${todayTasks.length > 0 ? '还有任务待完成' : '今日清洁已搞定'}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-clay-100 hover:shadow-md transition-shadow">
+        <p class="text-xs text-sage-500 font-semibold">物品预警</p>
+        <p class="text-2xl font-serif text-clay-600 mt-1">${lowItems.length}件</p>
+        <p class="text-xs text-sage-400 mt-1">需补货</p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+      <!-- 今日值日 -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg text-charcoal">今日值日</h2>
+          <button onclick="navigate('/cleaning')" class="text-xs text-clay-600 font-semibold hover:underline">查看排班 →</button>
+        </div>
+        ${todayTasks.length > 0 ? todayTasks.map(t=>{
+          const r = rm(t.assigneeId);
+          return `
+            <div class="flex items-center gap-3 py-3 border-b border-clay-50 last:border-0">
+              <span class="text-2xl">${r.avatar}</span>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-charcoal">${r.name} · ${t.area}</p>
+                <p class="text-xs text-sage-400">${isToday(t.date)?'今天':'即将'}值日</p>
+              </div>
+              <button onclick="toggleTask('${t.id}')" class="px-3 py-1.5 rounded-full bg-sage-100 text-sage-500 text-xs font-semibold hover:bg-sage-200 transition-colors">打卡</button>
+            </div>
+          `;
+        }).join('') : '<p class="text-sm text-sage-400 py-4 text-center">今日清洁任务已完成 🎉</p>'}
+      </div>
+
+      <!-- 物品预警 -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg text-charcoal">物品预警</h2>
+          <button onclick="navigate('/items')" class="text-xs text-clay-600 font-semibold hover:underline">管理物品 →</button>
+        </div>
+        ${lowItems.length > 0 ? lowItems.map(i=>`
+          <div class="flex items-center gap-3 py-3 border-b border-clay-50 last:border-0">
+            <span class="text-2xl">${i.emoji}</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-charcoal">${i.name}</p>
+              <p class="text-xs text-clay-500">仅剩 ${i.quantity}${i.unit}，需补货</p>
+            </div>
+            <span class="px-2 py-1 rounded-full bg-clay-100 text-clay-600 text-xs font-bold">低</span>
+          </div>
+        `).join('') : '<p class="text-sm text-sage-400 py-4 text-center">库存充足 ✨</p>'}
+      </div>
+    </div>
+
+    <!-- 室友动态 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mt-6">
+      <h2 class="text-lg text-charcoal mb-4">室友动态</h2>
+      <div class="space-y-0">
+        ${activities.length > 0 ? activities.map((a,idx)=>`
+          <div class="flex gap-4 ${idx < activities.length-1 ? 'pb-4':''}">
+            <div class="flex flex-col items-center">
+              <span class="w-9 h-9 rounded-full bg-cream flex items-center justify-center text-base">${a.icon}</span>
+              ${idx < activities.length-1 ? '<div class="w-px flex-1 bg-clay-100 my-1"></div>':''}
+            </div>
+            <div class="flex-1 pt-1">
+              <p class="text-sm text-charcoal">${a.text}</p>
+              <p class="text-xs text-sage-400 mt-0.5">${fmtDate(a.time)}</p>
+            </div>
+          </div>
+        `).join('') : '<p class="text-sm text-sage-400 py-4 text-center">暂无动态</p>'}
+      </div>
+    </div>
+  `;
+}
+
+/* ========== 费用分摊页 ========== */
+function expensesHTML() {
+  const categories = ['房租','水电','网费','日用','餐饮','其他'];
+  // 按月分组
+  const byMonth = {};
+  state.expenses.forEach(e=>{
+    const m = e.date.slice(0,7);
+    if(!byMonth[m]) byMonth[m]=[];
+    byMonth[m].push(e);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+
+  // 结算：计算每人净收支
+  const balances = {};
+  state.roommates.forEach(r=>balances[r.id]=0);
+  state.expenses.forEach(e=>{
+    const share = e.amount / e.splitAmong.length;
+    balances[e.payerId] += e.amount;
+    e.splitAmong.forEach(rid=>balances[rid] -= share);
+  });
+  // 债务关系
+  const debts = [];
+  const creditors = Object.entries(balances).filter(([_,v])=>v>0.01).sort((a,b)=>b[1]-a[1]);
+  const debtors = Object.entries(balances).filter(([_,v])=>v<-0.01).sort((a,b)=>a[1]-b[1]);
+  let dCopy = debtors.map(x=>[...x]);
+  creditors.forEach(([cid,cv])=>{
+    for(let d of dCopy){
+      if(d[1] >= -0.01) continue;
+      const pay = Math.min(cv - debts.filter(x=>x.from===cid).reduce((s,x)=>s+x.amount,0), -d[1]);
+      if(pay > 0.01){
+        debts.push({from:d[0], to:cid, amount:Math.round(pay*100)/100});
+        d[1] += pay;
+      }
+    }
+  });
+
+  return `
+    ${pageHeader('费用分摊', '记账、AA分摊、谁欠谁一目了然', '💰')}
+
+    <!-- 结算总览 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <h2 class="text-lg text-charcoal mb-4">结算总览</h2>
+      ${debts.length > 0 ? debts.map(d=>{
+        const from = rm(d.from), to = rm(d.to);
+        return `
+          <div class="flex items-center gap-3 py-2.5 border-b border-clay-50 last:border-0">
+            <span class="text-2xl">${from.avatar}</span>
+            <span class="text-sm font-semibold text-charcoal">${from.name}</span>
+            <span class="text-sage-400 text-sm">欠</span>
+            <span class="text-2xl">${to.avatar}</span>
+            <span class="text-sm font-semibold text-charcoal">${to.name}</span>
+            <span class="ml-auto px-3 py-1 rounded-full bg-clay-100 text-clay-600 text-sm font-bold">${fmtMoney(d.amount)}</span>
+          </div>
+        `;
+      }).join('') : '<p class="text-sm text-sage-400 py-4 text-center">大家已结清，没有欠账 🎉</p>'}
+    </div>
+
+    <!-- 记账表单 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <h2 class="text-lg text-charcoal mb-4">记一笔</h2>
+      <div id="expense-form" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-sage-500 font-semibold">金额</label>
+            <input id="ex-amount" type="number" step="0.01" placeholder="0.00" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400 transition-colors">
+          </div>
+          <div>
+            <label class="text-xs text-sage-500 font-semibold">付款人</label>
+            <select id="ex-payer" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400 transition-colors">
+              ${state.roommates.map(r=>`<option value="${r.id}">${r.avatar} ${r.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-sage-500 font-semibold">分类</label>
+          <div class="flex flex-wrap gap-2 mt-1" id="ex-category-chips">
+            ${categories.map((c,i)=>`<button data-cat="${c}" class="cat-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${i===0?'bg-clay-500 text-white border-clay-500':'bg-cream text-sage-500 border-clay-200 hover:border-clay-300'}">${c}</button>`).join('')}
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-sage-500 font-semibold">分摊给</label>
+          <div class="flex flex-wrap gap-2 mt-1" id="ex-split-chips">
+            ${state.roommates.map((r,i)=>`<button data-rid="${r.id}" class="split-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${i<4?'bg-sage-100 text-sage-500 border-sage-300':'bg-cream text-sage-500 border-clay-200'}">${r.avatar} ${r.name}</button>`).join('')}
+          </div>
+        </div>
+        <input id="ex-note" type="text" placeholder="备注（可选）" class="w-full px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400 transition-colors">
+        <button onclick="addExpense()" class="w-full py-3 rounded-full bg-clay-500 text-white font-semibold hover:bg-clay-600 transition-colors">记 账</button>
+      </div>
+    </div>
+
+    <!-- 账单流水 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100">
+      <h2 class="text-lg text-charcoal mb-4">账单流水</h2>
+      ${months.map(m=>{
+        const list = byMonth[m];
+        const total = list.reduce((s,e)=>s+e.amount,0);
+        return `
+          <div class="mb-6 last:mb-0">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-clay-100">
+              <h3 class="text-sm font-bold text-charcoal">${parseInt(m.slice(5))}月</h3>
+              <span class="text-sm font-bold text-clay-600">${fmtMoney(total)}</span>
+            </div>
+            ${list.map(e=>{
+              const r = rm(e.payerId);
+              const per = (e.amount / e.splitAmong.length).toFixed(2);
+              return `
+                <div class="flex items-center gap-3 py-2.5">
+                  <span class="w-10 h-10 rounded-xl bg-cream flex items-center justify-center text-lg">${r.avatar}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-charcoal truncate">${e.category} · ${e.note||''}</p>
+                    <p class="text-xs text-sage-400">${r.name}垫付 · ${fmtDate(e.date)} · 每人${fmtMoney(per)}</p>
+                  </div>
+                  <span class="text-sm font-bold text-clay-600">${fmtMoney(e.amount)}</span>
+                  <button onclick="deleteExpense('${e.id}')" class="text-sage-400 hover:text-clay-500 text-sm">✕</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* ========== 清洁排班页 ========== */
+function cleaningHTML() {
+  // 生成本周
+  const weekDays = [];
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay()+6)%7));
+  for(let i=0;i<7;i++){
+    const d = addDays(monday, i);
+    weekDays.push(d);
+  }
+
+  // 本周任务
+  const weekTasks = state.tasks.filter(t=>{
+    const td = new Date(t.date);
+    return weekDays.some(wd=>dateStr(wd)===dateStr(td));
+  });
+
+  const completionRate = state.tasks.length > 0 
+    ? Math.round(state.tasks.filter(t=>t.done).length / state.tasks.length * 100) 
+    : 0;
+
+  const areas = ['厨房','卫生间','客厅','倒垃圾','阳台'];
+
+  return `
+    ${pageHeader('清洁排班', '轮值排班、打卡记录，值日不遗漏', '🧹')}
+
+    <!-- 完成率 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg text-charcoal">总体完成率</h2>
+        <span class="text-2xl font-serif text-sage-500">${completionRate}%</span>
+      </div>
+      <div class="w-full h-3 rounded-full bg-cream overflow-hidden">
+        <div class="h-full bg-sage-400 rounded-full transition-all duration-700" style="width:${completionRate}%"></div>
+      </div>
+    </div>
+
+    <!-- 排班任务 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg text-charcoal">新增值日任务</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <select id="task-area" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+          ${areas.map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select>
+        <select id="task-assignee" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+          ${state.roommates.map(r=>`<option value="${r.id}">${r.avatar} ${r.name}</option>`).join('')}
+        </select>
+      </div>
+      <input id="task-date" type="date" class="w-full mt-3 px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+      <button onclick="addTask()" class="w-full mt-3 py-3 rounded-full bg-sage-400 text-white font-semibold hover:bg-sage-500 transition-colors">添加排班</button>
+    </div>
+
+    <!-- 周日历 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100">
+      <h2 class="text-lg text-charcoal mb-4">本周值日</h2>
+      <div class="grid grid-cols-7 gap-2">
+        ${weekDays.map(d=>{
+          const ds = dateStr(d);
+          const tasks = weekTasks.filter(t=>t.date===ds);
+          const isCurrent = isToday(ds);
+          const dayLabels = ['一','二','三','四','五','六','日'];
+          const dl = dayLabels[(d.getDay()+6)%7];
+          return `
+            <div class="min-h-[120px] rounded-xl p-2 ${isCurrent?'bg-clay-50 border-2 border-clay-300':'bg-cream/50 border border-clay-100'}">
+              <p class="text-xs font-bold ${isCurrent?'text-clay-600':'text-sage-400'} text-center">周${dl}</p>
+              <p class="text-sm font-bold text-charcoal text-center mb-2">${d.getDate()}</p>
+              ${tasks.map(t=>{
+                const r = rm(t.assigneeId);
+                return `
+                  <div onclick="toggleTask('${t.id}')" class="cursor-pointer mb-1 p-1.5 rounded-lg ${t.done?'bg-sage-50 line-through opacity-60':'bg-white'} text-center hover:shadow-sm transition-all">
+                    <span class="text-lg block">${r.avatar}</span>
+                    <span class="text-[10px] text-charcoal block">${t.area}</span>
+                  </div>
+                `;
+              }).join('') || '<p class="text-[10px] text-sage-300 text-center mt-4">—</p>'}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- 轮值历史 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mt-6">
+      <h2 class="text-lg text-charcoal mb-4">值日记录</h2>
+      ${state.tasks.filter(t=>t.done).slice().reverse().map(t=>{
+        const r = rm(t.assigneeId);
+        return `
+          <div class="flex items-center gap-3 py-2.5 border-b border-clay-50 last:border-0">
+            <span class="text-2xl">${r.avatar}</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-charcoal">${r.name} 完成了「${t.area}」</p>
+              <p class="text-xs text-sage-400">${fmtDate(t.doneAt)}</p>
+            </div>
+            <span class="text-sage-400">✅</span>
+          </div>
+        `;
+      }).join('') || '<p class="text-sm text-sage-400 py-4 text-center">暂无完成记录</p>'}
+    </div>
+  `;
+}
+
+/* ========== 公共物品页 ========== */
+function itemsHTML() {
+  const lowItems = state.items.filter(i=>i.quantity <= i.threshold);
+
+  return `
+    ${pageHeader('公共物品', '库存登记、消耗记录、补货提醒', '📦')}
+
+    <!-- 补货提醒 -->
+    ${lowItems.length > 0 ? `
+      <div class="bg-clay-50 rounded-2xl p-4 mb-6 border border-clay-200">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">⚠️</span>
+          <h2 class="text-sm font-bold text-clay-600">补货提醒</h2>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          ${lowItems.map(i=>`<span class="px-3 py-1 rounded-full bg-white text-clay-600 text-xs font-semibold">${i.emoji} ${i.name} 仅剩${i.quantity}${i.unit}</span>`).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- 添加物品 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <h2 class="text-lg text-charcoal mb-4">添加物品</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <input id="item-name" type="text" placeholder="物品名" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+        <input id="item-qty" type="number" placeholder="数量" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+        <input id="item-unit" type="text" placeholder="单位(包/瓶)" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+        <input id="item-threshold" type="number" placeholder="补货阈值" class="px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+      </div>
+      <button onclick="addItem()" class="w-full mt-3 py-3 rounded-full bg-clay-500 text-white font-semibold hover:bg-clay-600 transition-colors">添加物品</button>
+    </div>
+
+    <!-- 物品库存表 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <h2 class="text-lg text-charcoal mb-4">库存清单</h2>
+      ${state.items.map(i=>{
+        const pct = Math.min(100, (i.quantity / (i.threshold * 3 + 1)) * 100);
+        const isLow = i.quantity <= i.threshold;
+        return `
+          <div class="py-3 border-b border-clay-50 last:border-0">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="text-2xl">${i.emoji||'📦'}</span>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-charcoal">${i.name} ${isLow?'<span class="text-clay-500 text-xs">·需补货</span>':''}</p>
+                <p class="text-xs text-sage-400">剩余 ${i.quantity} ${i.unit} · 阈值 ${i.threshold}</p>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="useItem('${i.id}')" class="px-3 py-1.5 rounded-lg bg-sage-100 text-sage-500 text-xs font-semibold hover:bg-sage-200">消耗</button>
+                <button onclick="restockItem('${i.id}')" class="px-3 py-1.5 rounded-lg bg-clay-100 text-clay-600 text-xs font-semibold hover:bg-clay-200">补货</button>
+              </div>
+            </div>
+            <div class="w-full h-2 rounded-full bg-cream overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500 ${isLow?'bg-clay-400':'bg-sage-400'}" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <!-- 消耗记录 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100">
+      <h2 class="text-lg text-charcoal mb-4">消耗记录</h2>
+      ${state.usages.slice().reverse().map(u=>{
+        const item = state.items.find(i=>i.id===u.itemId);
+        const r = rm(u.userId);
+        return `
+          <div class="flex items-center gap-3 py-2.5 border-b border-clay-50 last:border-0">
+            <span class="text-xl">${item?.emoji||'📦'}</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-charcoal">${r.name} 消耗了 ${item?.name||''}</p>
+              <p class="text-xs text-sage-400">${fmtDate(u.date)}</p>
+            </div>
+            <span class="text-sm font-bold text-clay-600">-${u.amount}${item?.unit||''}</span>
+          </div>
+        `;
+      }).join('') || '<p class="text-sm text-sage-400 py-4 text-center">暂无消耗记录</p>'}
+    </div>
+  `;
+}
+
+/* ========== 室友公约页 ========== */
+function rulesHTML() {
+  return `
+    ${pageHeader('室友公约', '共同约定、动态投票、和谐共处', '📜')}
+
+    <!-- 添加公约 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mb-6">
+      <h2 class="text-lg text-charcoal mb-4">新增条款</h2>
+      <input id="rule-title" type="text" placeholder="条款标题" class="w-full mb-3 px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400">
+      <textarea id="rule-content" placeholder="条款内容描述..." rows="2" class="w-full mb-3 px-4 py-2.5 rounded-xl border border-clay-200 bg-cream/50 text-charcoal focus:outline-none focus:border-clay-400 resize-none"></textarea>
+      <button onclick="addRule()" class="w-full py-3 rounded-full bg-clay-500 text-white font-semibold hover:bg-clay-600 transition-colors">添加公约</button>
+    </div>
+
+    <!-- 公约条款 -->
+    <div class="space-y-4 stagger">
+      ${state.rules.map((r,i)=>`
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 hover:shadow-md transition-shadow">
+          <div class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-full bg-clay-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+            <div class="flex-1">
+              <h3 class="text-base font-bold text-charcoal">${r.title}</h3>
+              <p class="text-sm text-sage-500 mt-1 leading-relaxed">${r.content}</p>
+              <div class="flex items-center gap-3 mt-3">
+                <button onclick="voteRule('${r.id}','like')" class="flex items-center gap-1 px-3 py-1.5 rounded-full ${r.likes>r.dislikes?'bg-sage-100 text-sage-500':'bg-cream text-sage-400'} text-xs font-semibold hover:bg-sage-200 transition-colors">
+                  👍 ${r.likes}
+                </button>
+                <button onclick="voteRule('${r.id}','dislike')" class="flex items-center gap-1 px-3 py-1.5 rounded-full ${r.dislikes>=r.likes?'bg-clay-100 text-clay-600':'bg-cream text-sage-400'} text-xs font-semibold hover:bg-clay-200 transition-colors">
+                  👎 ${r.dislikes}
+                </button>
+                <button onclick="deleteRule('${r.id}')" class="ml-auto text-sage-400 hover:text-clay-500 text-xs">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- 室友名片 -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-clay-100 mt-6">
+      <h2 class="text-lg text-charcoal mb-4">室友名片</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        ${state.roommates.map(r=>`
+          <div class="text-center p-4 rounded-xl bg-cream/50 hover:bg-cream transition-colors">
+            <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center text-3xl" style="background:${r.color}20">${r.avatar}</div>
+            <p class="text-sm font-bold text-charcoal mt-2">${r.name}</p>
+            <p class="text-xs text-sage-400">${r.room}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/* ========== 事件绑定 ========== */
+let selectedCategory = '房租';
+let selectedSplits = new Set(state.roommates.map(r=>r.id));
+
+function bindGlobalEvents() {
+  // 分类 chips
+  document.querySelectorAll('.cat-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.cat-chip').forEach(b=>{
+        b.className = 'cat-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-cream text-sage-500 border-clay-200 hover:border-clay-300';
+      });
+      btn.className = 'cat-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-clay-500 text-white border-clay-500';
+      selectedCategory = btn.dataset.cat;
+    });
+  });
+  // 分摊 chips
+  document.querySelectorAll('.split-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const rid = btn.dataset.rid;
+      if(selectedSplits.has(rid)) {
+        selectedSplits.delete(rid);
+        btn.className = 'split-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-cream text-sage-500 border-clay-200';
+      } else {
+        selectedSplits.add(rid);
+        btn.className = 'split-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-sage-100 text-sage-500 border-sage-300';
+      }
+    });
+  });
+}
+
+/* ========== 操作函数 ========== */
+function addExpense() {
+  const amount = parseFloat(document.getElementById('ex-amount').value);
+  const payerId = document.getElementById('ex-payer').value;
+  const note = document.getElementById('ex-note').value;
+  if(!amount || amount <= 0) { alert('请输入有效金额'); return; }
+  if(selectedSplits.size === 0) { alert('请选择分摊对象'); return; }
+  state.expenses.push({
+    id: uid(), amount, category: selectedCategory, payerId,
+    date: dateStr(new Date()), note,
+    splitAmong: [...selectedSplits]
+  });
+  saveData(state);
+  render();
+}
+
+function deleteExpense(id) {
+  state.expenses = state.expenses.filter(e=>e.id!==id);
+  saveData(state);
+  render();
+}
+
+function toggleTask(id) {
+  const t = state.tasks.find(x=>x.id===id);
+  if(t) {
+    t.done = !t.done;
+    t.doneAt = t.done ? dateStr(new Date()) : '';
+    saveData(state);
+    render();
+  }
+}
+
+function addTask() {
+  const area = document.getElementById('task-area').value;
+  const assigneeId = document.getElementById('task-assignee').value;
+  const date = document.getElementById('task-date').value;
+  if(!date) { alert('请选择日期'); return; }
+  state.tasks.push({ id: uid(), area, date, assigneeId, done:false, doneAt:'' });
+  saveData(state);
+  render();
+}
+
+function addItem() {
+  const name = document.getElementById('item-name').value.trim();
+  const qty = parseInt(document.getElementById('item-qty').value);
+  const unit = document.getElementById('item-unit').value.trim() || '个';
+  const threshold = parseInt(document.getElementById('item-threshold').value) || 1;
+  if(!name) { alert('请输入物品名'); return; }
+  state.items.push({ id: uid(), name, quantity: qty||0, unit, threshold, emoji:'📦' });
+  saveData(state);
+  render();
+}
+
+function useItem(id) {
+  const amount = parseInt(prompt('消耗数量：','1'));
+  if(!amount || amount <= 0) return;
+  const item = state.items.find(i=>i.id===id);
+  if(!item) return;
+  item.quantity = Math.max(0, item.quantity - amount);
+  state.usages.push({ id: uid(), itemId:id, amount, userId:'r1', date:dateStr(new Date()) });
+  saveData(state);
+  render();
+}
+
+function restockItem(id) {
+  const amount = parseInt(prompt('补货数量：','5'));
+  if(!amount || amount <= 0) return;
+  const item = state.items.find(i=>i.id===id);
+  if(!item) return;
+  item.quantity += amount;
+  saveData(state);
+  render();
+}
+
+function addRule() {
+  const title = document.getElementById('rule-title').value.trim();
+  const content = document.getElementById('rule-content').value.trim();
+  if(!title) { alert('请输入条款标题'); return; }
+  state.rules.push({ id: uid(), title, content: content||'', likes:0, dislikes:0 });
+  saveData(state);
+  render();
+}
+
+function voteRule(id, type) {
+  const r = state.rules.find(x=>x.id===id);
+  if(r) {
+    if(type==='like') r.likes++; else r.dislikes++;
+    saveData(state);
+    render();
+  }
+}
+
+function deleteRule(id) {
+  state.rules = state.rules.filter(r=>r.id!==id);
+  saveData(state);
+  render();
+}
+
+/* ========== 启动 ========== */
+render();
+</script>
+</body>
+</html>
