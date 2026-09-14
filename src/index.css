@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: #F7F1E8;
+  color: #2D2A26;
+}
+h1, h2, h3, .font-serif {
+  font-family: 'DM Serif Display', serif;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E4B389; border-radius: 4px; }
+
+@media (min-width: 768px) { .mobile-nav { display: none !important; } }
+@media (max-width: 767px) {
+  .desktop-nav { display: none !important; }
+  .main-pad { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
