@@ -219,6 +219,17 @@ app.delete('/api/houses/:id/rules/:rid', (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- 生产环境：托管前端构建产物（SPA 回退） ---------- */
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.join(__dirname, '..', 'dist');
+app.use(express.static(distDir));
+app.get(/^\/(?!api\/).*/, (_req, res) => {
+  res.sendFile(path.join(distDir, 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`[server] 合租生活管家 API 已启动: http://localhost:${PORT}`);
 });

@@ -52,6 +52,31 @@ npm start        # 启动后端 API（端口 3001）
 ```
 
 > 生产部署时，将 `dist/` 交给任意静态托管（Nginx / Vercel / Netlify），并部署 `server/` 到 Node 服务即可。API 地址可通过 Nginx 反向代理保持 `/api` 前缀不变。
+>
+> 后端已内置静态托管：生产环境 `npm run build && npm start` 后，Express 会在 3001 端口同时提供 API 与前端页面（SPA 路由自动回退），单服务即可完成全栈部署。
+
+### 在线部署（推荐 Render，免费）
+
+GitHub Pages 只能托管静态页面，**无法运行本项目的 Express 后端**（数据功能会失效）。要让其他人通过网址访问完整功能，推荐 Render 全栈部署：
+
+1. 打开 https://render.com ，用 GitHub 账号登录
+2. New → **Web Service** → 选择仓库 `643995297-cpu/home-help`
+3. 配置：
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+   - 实例类型选 **Free**
+4. 点击 Create Web Service，等待构建完成后即可通过 `https://你的应用名.onrender.com` 访问
+
+> 注意：Render 免费实例会在 15 分钟无访问后休眠，首次打开需等待约 30-60 秒唤醒；重新部署会重置数据（JSON 文件存储在实例磁盘）。
+
+### 前后端分开部署（可选）
+
+- 前端可部署到 GitHub Pages / Vercel 等：构建时通过 `VITE_API_BASE` 指定后端地址，例如：
+  ```bash
+  VITE_API_BASE=https://你的后端.onrender.com/api npm run build
+  ```
+  部署到 GitHub Pages 子路径时还需：`BASE_PATH=/home-help/ npm run build`
+- 后端单独部署到 Render / Railway / Fly.io 等 Node 平台（已开启 CORS，支持跨域）
 
 ## 5. 首次使用
 
